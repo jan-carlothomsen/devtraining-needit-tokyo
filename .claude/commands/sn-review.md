@@ -1,9 +1,9 @@
 # ServiceNow Code Review
 
-Review ServiceNow JavaScript code in this repository for correctness, ES5 compliance, security, and ServiceNow best practices.
+Review ServiceNow JavaScript code for ES5 compliance, correctness, security, and ServiceNow best practices.
 
 Arguments: $ARGUMENTS
-(Optional: file path or class name to focus on. If blank, review all files in `update/` and `scripts/`.)
+(Optional: paste the code or point to a file. If blank, review all JS files in `scripts/`.)
 
 ## Review Checklist
 
@@ -13,73 +13,55 @@ Arguments: $ARGUMENTS
 - [ ] No template literals (backticks)
 - [ ] No `class` keyword
 - [ ] No `async` / `await` / `Promise`
-- [ ] No destructuring assignment `const { a, b } = obj`
+- [ ] No destructuring `const { a, b } = obj`
 - [ ] No spread operator `...`
-- [ ] No `for...of` loops (use `for` with index or `while (gr.next())`)
-- [ ] No `Object.assign` with spread (use manual property copy)
+- [ ] No `for...of` loops
 - [ ] No optional chaining `?.` or nullish coalescing `??`
 
-### 2. ServiceNow Script Include Structure
+### 2. Script Include Structure
 - [ ] Uses `Class.create()` and `prototype` pattern
 - [ ] Has `type: 'ClassName'` property on prototype
-- [ ] `initialize` function is the constructor
-- [ ] `api_name` in XML matches `x_58872_needit.<ClassName>`
-- [ ] `sys_package` and `sys_scope` both reference app sys_id `6ead8e780f603200cd674f8ce1050ed1`
-- [ ] `sys_update_name` = `sys_script_include_` + `sys_id`
+- [ ] `initialize` is the constructor function
 
 ### 3. GlideRecord Safety
-- [ ] Every `gr.query()` is followed by `gr.next()` before accessing fields
-- [ ] Never access `gr.fieldName` after query without checking `gr.next()` returned true
+- [ ] Every `gr.query()` is followed by a `gr.next()` check before accessing fields
 - [ ] `gr.setValue()` is used for setting values (not direct assignment for reference fields)
-- [ ] `gr.get(sysId)` is used for single-record lookup (returns boolean)
+- [ ] `gr.get(sysId)` used for single-record lookup (returns boolean)
 - [ ] Large queries use `gr.setLimit()` to prevent runaway queries
-- [ ] Encoded queries use `addEncodedQuery()` or `addQuery()` — not string manipulation on SQL
+- [ ] No raw SQL string concatenation in queries
 
-### 4. REST / HTTP Safety (RESTMessageV2)
-- [ ] Credentials are not hardcoded — use `gs.getProperty()` or `GlideEncrypter` or passed via config
-- [ ] `response.getStatusCode()` is checked before using `response.getBody()`
-- [ ] `JSON.parse()` is wrapped in try/catch (body may not be valid JSON)
-- [ ] Timeouts are set (`rm.setTimeout()`)
-- [ ] No unbounded retry loops (always limit retries)
+### 4. REST / HTTP Safety
+- [ ] No hardcoded credentials, tokens, or passwords
+- [ ] `response.getStatusCode()` checked before using `response.getBody()`
+- [ ] `JSON.parse()` wrapped in try/catch
+- [ ] Timeouts set via `rm.setTimeout()`
+- [ ] Retries are bounded (no infinite loops)
 
 ### 5. Error Handling
 - [ ] Methods return result objects `{ success, data, error }` rather than throwing
-- [ ] `try/catch` around external calls (REST, GlideRecord in some contexts)
 - [ ] Errors logged with `gs.error()`, not silently swallowed
 - [ ] No `gs.print()` (deprecated) — use `gs.info()` / `gs.warn()` / `gs.error()`
 
 ### 6. Security
-- [ ] No hardcoded credentials, tokens, or passwords in any file
+- [ ] No hardcoded credentials anywhere
 - [ ] No `eval()` usage
-- [ ] User-supplied input is not concatenated into GlideRecord encoded queries without escaping
-- [ ] Reference fields set via `setValue()` or `setDisplayValue()`, not raw string assignment
-- [ ] No `gs.executeQuery()` with raw SQL strings
-
-### 7. XML Update Set Record
-- [ ] `action="INSERT_OR_UPDATE"` on the table element
-- [ ] `sys_id` is a valid 32-char lowercase hex string
-- [ ] JavaScript inside `<![CDATA[...]]>` (not XML-escaped)
-- [ ] `<client_callable>false</client_callable>` for server-side utilities
-- [ ] No tracked-only fields (`sys_created_by`, `sys_updated_on`, etc.) in manually created records
+- [ ] User input not concatenated into GlideRecord queries without escaping
 
 ## Output Format
 
-For each issue found, report:
+For each issue found:
 ```
-FILE: path/to/file.xml (line N)
 SEVERITY: error | warning | info
-RULE: <rule name from checklist>
+RULE: <rule name>
+LINE: ~N
 ISSUE: <what is wrong>
 FIX: <what to change it to>
 ```
 
-Then provide a summary:
+Summary:
 ```
-Errors (must fix before import): N
+Errors (must fix): N
 Warnings (should fix): N
-Info (nice to fix): N
 ```
 
-If no issues are found in a file, say so explicitly.
-
-Finally, if there are errors: produce the corrected code directly.
+If there are errors, produce the corrected code in full so the user can paste it directly into ServiceNow.
